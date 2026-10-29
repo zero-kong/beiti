@@ -268,14 +268,62 @@ body.has-tabbar .page { padding-bottom: calc(88px + env(safe-area-inset-bottom))
   font-size: 12px; color: var(--muted); font-weight: 600;
   letter-spacing: 1px; margin-bottom: 8px;
 }
-.a-text { font-size: 15.5px; line-height: 1.8; word-break: break-word; }
-.a-text p { margin: 0 0 10px; }
-.a-text ul { margin: 0 0 10px; padding-left: 0; list-style: none; }
-.a-text li { position: relative; padding-left: 18px; margin-bottom: 8px; }
-.a-text li::before {
-  content: ""; position: absolute; left: 2px; top: .66em;
+/* ---------- Markdown 内容 ---------- */
+.md { font-size: 15.5px; line-height: 1.8; word-break: break-word; }
+.md p { margin: 0 0 10px; }
+.md ul, .md ol { margin: 0 0 12px; padding-left: 22px; }
+.md li { margin-bottom: 7px; }
+.md ul { list-style: none; }
+.md ul > li { position: relative; padding-left: 4px; }
+.md ul > li::before {
+  content: ""; position: absolute; left: -14px; top: .66em;
   width: 7px; height: 7px; border-radius: 50%; background: var(--accent);
 }
+.md h2, .md h3, .md h4, .md h5 { margin: 16px 0 8px; line-height: 1.4; }
+.md h2 { font-size: 17px; }
+.md h3 { font-size: 16px; }
+.md h4, .md h5 { font-size: 15px; }
+.md h2:first-child, .md h3:first-child, .md p:first-child, .md ul:first-child, .md ol:first-child { margin-top: 0; }
+.md blockquote {
+  margin: 0 0 12px; padding: 8px 12px; border-left: 3px solid var(--accent);
+  background: var(--accent-weak); border-radius: 0 10px 10px 0; color: var(--ink);
+}
+.md a { color: var(--accent); }
+.md hr { border: none; border-top: 1px solid var(--line); margin: 14px 0; }
+
+code.ic {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Courier New", monospace;
+  background: var(--accent-weak); color: var(--accent);
+  padding: 1px 6px; border-radius: 6px; font-size: .9em;
+}
+
+pre.codeblk {
+  background: #0d1117; color: #e6edf3;
+  border-radius: 12px; margin: 0 0 12px; overflow: hidden;
+}
+pre.codeblk .blk-head {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 6px 8px 6px 14px; background: rgba(255, 255, 255, .05);
+  font-size: 12px; color: #8b949e;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+pre.codeblk .copy {
+  border: none; background: transparent; color: #8b949e; cursor: pointer;
+  font-size: 12px; padding: 3px 10px; border-radius: 6px; font-family: inherit;
+}
+pre.codeblk .copy:hover { color: #e6edf3; background: rgba(255, 255, 255, .09); }
+pre.codeblk code {
+  display: block; padding: 12px 16px; overflow-x: auto;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Courier New", monospace;
+  font-size: 13px; line-height: 1.65;
+  white-space: pre-wrap; overflow-wrap: break-word;   /* 手机上直接换行，免去横向滚动 */
+}
+pre.codeblk code::-webkit-scrollbar { height: 5px; }
+pre.codeblk code::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, .18); border-radius: 3px; }
+.tk-c { color: #9aa4b2; }
+.tk-s { color: #a5d6ff; }
+.tk-k { color: #ff7b72; }
+.tk-n { color: #79c0ff; }
 .a-note {
   margin-top: 10px; padding: 10px 12px; border-radius: 10px;
   background: var(--amber-weak); color: var(--ink); font-size: 13.5px;

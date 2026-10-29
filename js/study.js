@@ -4,21 +4,6 @@
   var revealed = false;
   var keyHandler = null;
 
-  /* 答案渲染：以“- ”开头的行作为要点列表，其余按段落 */
-  function answerHtml(a) {
-    var parts = String(a).split('\n').map(function (s) { return s.trim(); }).filter(Boolean);
-    var out = '', bullets = [];
-    parts.forEach(function (line) {
-      if (line.slice(0, 2) === '- ') bullets.push(line.slice(2));
-      else {
-        if (bullets.length) { out += '<ul>' + bullets.map(function (b) { return '<li>' + App.util.esc(b) + '</li>'; }).join('') + '</ul>'; bullets = []; }
-        out += '<p>' + App.util.esc(line) + '</p>';
-      }
-    });
-    if (bullets.length) out += '<ul>' + bullets.map(function (b) { return '<li>' + App.util.esc(b) + '</li>'; }).join('') + '</ul>';
-    return out || '<p></p>';
-  }
-
   function render(root) {
     var cur = App.session.current();
     if (!cur) { App.ui.go('home'); return; }
@@ -44,7 +29,7 @@
       '  </div>' +
       '  <div class="card answer-card' + (revealed ? '' : ' hidden-card') + '">' +
       '    <div class="a-label">参考答案</div>' +
-      '    <div class="a-text">' + answerHtml(q.answer) + '</div>' +
+      '    <div class="a-text md">' + App.md.render(q.answer) + '</div>' +
       (q.note ? '<div class="a-note"><b>备注</b>' + App.util.esc(q.note) + '</div>' : '') +
       (q.source ? '<a class="a-src" href="' + App.util.esc(q.source) + '" target="_blank" rel="noopener">来源链接 ↗</a>' : '') +
       '  </div>' +

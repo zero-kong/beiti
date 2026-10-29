@@ -20,7 +20,7 @@
       '      <textarea id="f-question" rows="3" placeholder="例如：HashMap 的 put 流程是什么？">' + App.util.esc(q ? q.question : '') + '</textarea>' +
       '    </label>' +
       '    <label class="field"><span>参考答案 <i>*</i></span>' +
-      '      <textarea id="f-answer" rows="8" placeholder="建议整理成 3–5 个要点，每行一个，用“- ”开头&#10;- 第一个要点&#10;- 第二个要点&#10;篇幅以面试中能口头复述为准">' + App.util.esc(q ? q.answer : '') + '</textarea>' +
+      '      <textarea id="f-answer" rows="8" placeholder="支持 Markdown：&#10;- 要点一&#10;- 要点二，可 **加粗**、`行内代码`&#10;```java&#10;// 整块代码展示&#10;```&#10;篇幅以面试中能口头复述为准">' + App.util.esc(q ? q.answer : '') + '</textarea>' +
       '    </label>' +
       '    <div class="field"><span>标签（选填，可多个）</span>' +
       '      <div class="tag-edit">' +

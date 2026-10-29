@@ -18,7 +18,10 @@ http.createServer((req, res) => {
   if (!file.startsWith(root)) { res.writeHead(403); return res.end(); }
   fs.readFile(file, (err, data) => {
     if (err) { res.writeHead(404); return res.end('404'); }
-    res.writeHead(200, { 'Content-Type': types[path.extname(file)] || 'application/octet-stream' });
+    res.writeHead(200, {
+      'Content-Type': types[path.extname(file)] || 'application/octet-stream',
+      'Cache-Control': 'no-store'   // 本地开发禁缓存，改代码即生效
+    });
     res.end(data);
   });
 }).listen(8787, () => console.log('serving http://127.0.0.1:8787'));

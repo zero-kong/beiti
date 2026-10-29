@@ -246,7 +246,7 @@
       seed('列表渲染为什么要用 key？',
         '- diff 通过 key 判断是不是同一个节点，从而复用 DOM 和组件状态\n- 用数组索引当 key，在插入、删除、排序时会错位复用，出现状态串扰\n- 稳定唯一的 id 是最佳实践；key 只要求兄弟节点间唯一\n- key 变化会触发卸载重建并重置 state，也可以借它强制重置组件', ['React', '示例']),
       seed('说说事件循环里宏任务与微任务的执行顺序',
-        '- 每轮循环：执行一个宏任务，然后清空整个微任务队列，之后才可能渲染\n- 微任务：Promise.then、queueMicrotask、MutationObserver\n- 宏任务：setTimeout / setInterval、I/O、UI 事件等\n- async 函数 await 之后的代码会进入微任务队列\n- 经典结论：同一轮里所有微任务先于下一个宏任务执行', ['ES6', '示例']),
+        '- 每轮循环：执行一个宏任务，然后清空整个微任务队列，之后才可能渲染\n- 微任务：Promise.then、queueMicrotask、MutationObserver\n- 宏任务：setTimeout / setInterval、I/O、UI 事件等\n- async 函数 await 之后的代码会进入微任务队列\n- 经典结论：同一轮里所有微任务先于下一个宏任务执行\n\n```js\nconsole.log("1");\nsetTimeout(() => console.log("2"), 0);\nPromise.resolve().then(() => console.log("3"));\nconsole.log("4");\n// 输出顺序：1 → 4 → 3 → 2\n```', ['ES6', '示例']),
       seed('ReAct 模式是什么，为什么比纯 Prompt 问答好？',
         '- 前提：大模型单次直接回答复杂问题容易漏步骤、产生幻觉\n- 方案：按 Thought → Action（工具调用）→ Observation 循环推进\n- 每步只解决一个小问题，用工具拿到真实数据再下结论\n- 中间过程可观察、可中断、可纠错，失败时根据观察调整策略重试\n- 取舍：轮数和时延变多，但答案可靠性和可追溯性明显更好', ['Agent', '示例']),
       seed('大模型工具调用失败了怎么处理？',
