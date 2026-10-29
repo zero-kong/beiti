@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#f4f5f7">
+  <title>背题 · 面试背诵</title>
+  <link rel="stylesheet" href="css/app.css">
+</head>
+<body>
+  <div id="app"></div>
+
+  <nav id="tabbar" class="tabbar">
+    <button class="tab" data-route="home" data-go="home">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V21h14V9.5"/></svg>
+      <span>首页</span>
+    </button>
+    <button class="tab" data-route="list" data-go="list">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 6h12M9 12h12M9 18h12"/><path d="M4 6h.01M4 12h.01M4 18h.01"/></svg>
+      <span>题库</span>
+    </button>
+  </nav>
+
+  <script src="js/util.js"></script>
+  <script src="js/review.js"></script>
+  <script src="js/store.js"></script>
+  <script src="js/session.js"></script>
+  <script src="js/ui.js"></script>
+  <script src="js/list.js"></script>
+  <script src="js/study.js"></script>
+  <script src="js/edit.js"></script>
+  <script src="js/io.js"></script>
+  <script>
+    (function () {
+      App.ui.register('home', App.ui.renderHome);
+      document.getElementById('tabbar').addEventListener('click', function (e) {
+        var tab = e.target.closest('.tab');
+        if (tab) App.ui.go(tab.dataset.go);
+      });
+      window.addEventListener('hashchange', App.ui.render);
+      App.ui.render();
+    })();
+  </script>
+</body>
+</html>
