@@ -1,12 +1,11 @@
-/* 添加 / 编辑题目页：题目、答案必填；标签可多个；来源链接与备注选填。编辑不重置进度。 */
+/* 添加 / 编辑题目页：题目、答案必填；学科分类（三级）选填；来源链接与备注选填。
+   编辑不重置进度。页面不再提供标签录入（题库已按目录树组织，标签字段仅存量保留）。 */
 (function () {
   'use strict';
-  var picked = [];   // 已选标签
-  var catPicked = [];  // 学科分类路径（最多 3 级）
+  var catPicked = [];   // 学科分类路径（最多 3 级）
 
   function render(root, params) {
     var q = params.id ? App.store.byId(params.id) : null;
-    picked = q ? q.tags.slice() : [];
     catPicked = q && q.category ? q.category.slice() : [];
     var isEdit = !!q;
 
@@ -27,13 +26,6 @@
       '    <div class="field"><span>学科分类（选填，最多三级）</span>' +
       '      <div class="cat-edit" id="cat-edit"></div>' +
       '    </div>' +
-      '    <div class="field"><span>标签（选填，可多个）</span>' +
-      '      <div class="tag-edit">' +
-      '        <div class="picked-tags" id="picked"></div>' +
-      '        <input id="f-tag" placeholder="输入后按回车添加">' +
-      '      </div>' +
-      '      <div class="suggest" id="suggest"></div>' +
-      '    </div>' +
       '    <label class="field"><span>来源链接（选填）</span>' +
       '      <input id="f-source" type="url" placeholder="https://…" value="' + App.util.esc(q ? q.source : '') + '">' +
       '    </label>' +
@@ -51,18 +43,6 @@
     bind(root, q);
   }
 
-  function renderTags(root) {
-    root.querySelector('#picked').innerHTML = picked.map(function (t) {
-      return '<span class="chip tag picked">' + App.util.esc(t) + '<button data-rm="' + App.util.esc(t) + '">×</button></span>';
-    }).join('');
-    var existing = App.store.allTags().filter(function (t) { return picked.indexOf(t) === -1; });
-    root.querySelector('#suggest').innerHTML = existing.length
-      ? '可选：' + existing.slice(0, 12).map(function (t) {
-          return '<button class="fchip sm" data-add="' + App.util.esc(t) + '">' + App.util.esc(t) + '</button>';
-        }).join(' ')
-      : '';
-  }
-
   /* ---------- 学科分类选择器 ---------- */
   function renderCat(root) {
     var box = root.querySelector('#cat-edit');
@@ -76,7 +56,7 @@
             return '<span class="chip catc">' + App.util.esc(c) +
               (i === catPicked.length - 1 ? '<button type="button" data-catrm="1">×</button>' : '') + '</span>';
           }).join('') + '<span class="chip catc subtle">第 ' + catPicked.length + ' 级</span>'
-        : '<span class="chip catc subtle">未设置</span>') +
+        : '<span class="chip catc subtle">未设置（将归入未分类）</span>') +
       (catPicked.length ? '<button type="button" class="fchip sm" data-catreset="1">重置</button>' : '') +
       '</div>';
 
@@ -85,7 +65,7 @@
       if (opts.length) {
         html += '<div class="chip-row cat in-form">' +
           opts.map(function (o) {
-            return '<button type="button" class="fchip' + (catPicked[depth] === o ? ' on' : '') + '" data-catpick="' + App.util.esc(o) + '">' + App.util.esc(o) + '</button>';
+            return '<button type="button" class="fchip" data-catpick="' + App.util.esc(o) + '">' + App.util.esc(o) + '</button>';
           }).join('') + '</div>';
       }
       html += '<input id="f-cat" placeholder="自定义第 ' + (depth + 1) + ' 级，回车添加">';
@@ -117,7 +97,6 @@
   }
 
   function bind(root, q) {
-    renderTags(root);
     renderCat(root);
     bindCat(root);
 
@@ -125,40 +104,13 @@
       if (history.length > 1) history.back(); else App.ui.go('list');
     };
 
-    var tagInput = root.querySelector('#f-tag');
-    tagInput.addEventListener('keydown', function (e) {
-      if (e.key === 'Enter' || e.key === ',') {
-        e.preventDefault();
-        addTag(tagInput.value.trim());
-        tagInput.value = '';
-      }
-    });
-
-    root.querySelector('.tag-edit').addEventListener('click', function (e) {
-      var rm = e.target.closest('[data-rm]');
-      if (rm) {
-        picked = picked.filter(function (t) { return t !== rm.dataset.rm; });
-        renderTags(root);
-      }
-    });
-    root.querySelector('#suggest').addEventListener('click', function (e) {
-      var add = e.target.closest('[data-add]');
-      if (add) { addTag(add.dataset.add); renderTags(root); }
-    });
-
-    function addTag(t) {
-      if (t && picked.indexOf(t) === -1) picked.push(t);
-      renderTags(root);
-    }
-
     root.querySelector('#btn-save').onclick = function () {
       var question = root.querySelector('#f-question').value.trim();
       var answer = root.querySelector('#f-answer').value.trim();
       if (!question) { App.ui.toast('题目不能为空'); return; }
       if (!answer) { App.ui.toast('参考答案不能为空'); return; }
       var data = {
-        question: question, answer: answer, tags: picked.slice(),
-        category: catPicked.slice(),
+        question: question, answer: answer, category: catPicked.slice(),
         source: root.querySelector('#f-source').value.trim(),
         note: root.querySelector('#f-note').value.trim()
       };

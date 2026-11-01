@@ -85,6 +85,63 @@
     });
   }
 
+  /* 目录选择弹层（选择背诵用）：逐级进入目录，返回 Promise<path|null>；path 为空数组表示全部 */
+  function treePicker() {
+    return new Promise(function (resolve) {
+      var path = [];
+      var host = document.createElement('div');
+      host.className = 'overlay';
+
+      function count(p) { return App.store.filterQuestions({ category: p }).length; }
+      function kids(p) {
+        var tree = App.store.categoryTree();
+        if (!p.length) {
+          var roots = tree.roots.slice();
+          if (count(['未分类'])) roots.push('未分类');
+          return roots;
+        }
+        if (p.length >= 3 || p[0] === '未分类') return [];
+        return tree.subs[p.join('|')] || [];
+      }
+
+      function renderSheet() {
+        var subs = kids(path);
+        var n = count(path);
+        host.innerHTML =
+          '<div class="sheet">' +
+          '  <div class="sheet-title">选择背诵</div>' +
+          '  <div class="crumbs">' +
+          '    <button data-crumb="-1"' + (path.length ? '' : ' class="on"') + '>全部</button>' +
+             path.map(function (name, i) {
+               return '<span>›</span><button data-crumb="' + i + '"' + (i === path.length - 1 ? ' class="on"' : '') + '>' + App.util.esc(name) + '</button>';
+             }).join('') +
+          '  </div>' +
+          (subs.length
+            ? subs.map(function (s) {
+                return '<button class="folder-line" data-in="' + App.util.esc(s) + '">' +
+                  '<span class="fl-name">📁 ' + App.util.esc(s) + '</span>' +
+                  '<span class="fl-count">' + count(path.concat([s])) + ' 题 ›</span></button>';
+              }).join('')
+            : '<div class="sheet-desc">这里没有更细的分类了</div>') +
+          '  <button class="btn primary block"' + (n ? ' data-pick="1"' : ' disabled') + '>背这里（' + n + ' 题）</button>' +
+          '  <button class="btn ghost block" data-act="cancel">取消</button>' +
+          '</div>';
+      }
+
+      host.addEventListener('click', function (e) {
+        if (e.target === host) { closeModal(host); resolve(null); return; }
+        var crumb = e.target.closest('[data-crumb]');
+        if (crumb) { path = path.slice(0, +crumb.dataset.crumb + 1); renderSheet(); return; }
+        var into = e.target.closest('[data-in]');
+        if (into) { path = path.concat([into.dataset.in]); renderSheet(); return; }
+        if (e.target.closest('[data-pick]')) { closeModal(host); resolve(path); return; }
+        if (e.target.closest('[data-act=cancel]')) { closeModal(host); resolve(null); }
+      });
+      renderSheet();
+      document.body.appendChild(host);
+    });
+  }
+
   /* ---------- 路由 ---------- */
   var routes = {};
 
@@ -163,6 +220,12 @@
         '  <span class="chev">›</span>' +
         '</button>' +
 
+        '<button class="big-card" id="pick-study">' +
+        '  <div class="big-ico pick"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7a2 2 0 0 1 2-2h4l2 3h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg></div>' +
+        '  <div class="big-txt"><div class="big-title">选择背诵</div><div class="big-sub">按学科目录挑一个专题开背</div></div>' +
+        '  <span class="chev">›</span>' +
+        '</button>' +
+
         '<button class="big-card" id="start-free">' +
         '  <div class="big-ico free"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg></div>' +
         '  <div class="big-txt"><div class="big-title">自由背题</div><div class="big-sub">从全部 ' + c.total + ' 题里开背</div></div>' +
@@ -192,6 +255,18 @@
       App.ui.go('study');
     };
 
+    var pickBtn = root.querySelector('#pick-study');
+    if (pickBtn) pickBtn.onclick = async function () {
+      var path = await treePicker();
+      if (!path) return;
+      var ids = App.store.filterQuestions({ category: path }).map(function (q) { return q.id; });
+      if (!ids.length) { toast('这个目录下还没有题目'); return; }
+      var order = await chooseOrder();
+      if (!order) return;
+      if (!App.session.start({ ids: ids, mode: 'free', order: order })) { toast('没有可背的题目'); return; }
+      App.ui.go('study');
+    };
+
     var freeBtn = root.querySelector('#start-free');
     if (freeBtn) freeBtn.onclick = async function () {
       var order = await chooseOrder();
@@ -207,7 +282,7 @@
 
   App.ui = {
     toast: toast, confirmDialog: confirmDialog, chooseOrder: chooseOrder,
-    menuSheet: menuSheet,
+    menuSheet: menuSheet, treePicker: treePicker,
     register: register, render: render, go: go, renderHome: renderHome
   };
 })();

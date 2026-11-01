@@ -511,3 +511,50 @@ pre.codeblk code::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, .18)
   border: none; outline: none; background: transparent; color: var(--ink);
   width: 100%; font-size: 14px; font-family: inherit; margin-top: 6px;
 }
+
+/* ---------- 文件树列表 ---------- */
+.tree-list { margin-top: 2px; }
+.tree-row {
+  display: flex; align-items: center; gap: 4px;
+  background: var(--card); border: 1px solid var(--line); border-radius: 12px;
+  padding: 8px 8px 8px 6px; margin-bottom: 6px; box-shadow: var(--shadow);
+}
+.tree-row[data-lv="1"] { margin-left: 22px; }
+.tree-row[data-lv="2"] { margin-left: 44px; }
+.tree-toggle {
+  width: 26px; height: 26px; flex: none;
+  border: none; background: transparent; color: var(--muted);
+  font-size: 12px; cursor: pointer; border-radius: 8px;
+  transition: transform .15s;
+}
+.tree-row.open .tree-toggle { transform: rotate(90deg); color: var(--accent); }
+.tree-name { flex: 1; min-width: 0; font-weight: 600; cursor: pointer; padding: 4px 0; }
+.tree-name::before { content: "📁"; font-size: 14px; margin-right: 7px; }
+.tree-count {
+  flex: none; font-size: 11.5px; font-weight: 600;
+  background: var(--accent-weak); color: var(--accent);
+  border-radius: 999px; padding: 1px 9px;
+}
+.tree-go { flex: none; }
+.tree-hint { color: var(--muted); font-size: 12px; }
+.q-item.tree-lv1 { margin-left: 22px; }
+.q-item.tree-lv2 { margin-left: 44px; }
+.q-item.tree-lv3 { margin-left: 66px; }
+
+/* 目录选择弹层（选择背诵） */
+.crumbs { display: flex; flex-wrap: wrap; align-items: center; gap: 2px; margin: 4px 0 12px; }
+.crumbs button {
+  border: none; background: transparent; color: var(--accent);
+  font-size: 13px; cursor: pointer; padding: 4px 6px; border-radius: 8px; font-family: inherit;
+}
+.crumbs button.on { background: var(--accent-weak); font-weight: 700; }
+.crumbs span { color: var(--muted); font-size: 12px; }
+.folder-line {
+  display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  width: 100%; background: var(--card); border: 1px solid var(--line);
+  border-radius: 12px; padding: 11px 14px; margin-bottom: 8px;
+  cursor: pointer; text-align: left; color: var(--ink); font-family: inherit;
+}
+.folder-line:active { transform: scale(.985); }
+.fl-name { font-weight: 600; font-size: 14.5px; }
+.fl-count { color: var(--muted); font-size: 12.5px; }

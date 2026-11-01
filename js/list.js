@@ -1,8 +1,8 @@
-/* 题库页：搜索、标签/收藏筛选、勾选开背、添加编辑入口、导入导出。
-   结构上搜索框与筛选条常驻，只重绘结果区，避免输入过程中输入框被重建。 */
+/* 题库页：文件树列表（学科 → 分类 → 专题 逐级展开）+ 搜索 + 收藏筛选 + 勾选开背。
+   标签不再用于页面组织；搜索框与结果区分离，输入时不重建输入框。 */
 (function () {
   'use strict';
-  var uiState = { search: '', tags: [], favOnly: false, cat: [], selected: {} };
+  var uiState = { search: '', favOnly: false, expanded: {}, selected: {} };
   var rootEl = null;
 
   function statusBadge(q) {
@@ -12,10 +12,10 @@
     return '<span class="chip plan">' + App.util.esc(App.util.fmtDue(q.dueAt)) + '</span>';
   }
 
-  function filtered() {
-    return App.store.filterQuestions({
-      search: uiState.search, tags: uiState.tags, favOnly: uiState.favOnly, category: uiState.cat
-    });
+  function filtered(opts) {
+    return App.store.filterQuestions(Object.assign(
+      { search: uiState.search, favOnly: uiState.favOnly }, opts || {}
+    ));
   }
 
   function selectedIds() {
@@ -29,71 +29,99 @@
     App.ui.go('study');
   }
 
-  /* ---------- 学科分类筛选行（逐级显示：选了一级才出二级，依此类推） ---------- */
-  function catRowsHtml() {
-    var tree = App.store.categoryTree();
-    var cat = uiState.cat;
-    var rows = '';
+  /* ---------- 文件树 ---------- */
+  function subtreeIds(path) {
+    return filtered({ category: path }).map(function (q) { return q.id; });
+  }
+  function subtreeCount(path) { return subtreeIds(path).length; }
 
-    var r1 = '<button class="fchip' + (cat.length ? '' : ' on') + '" data-cut="0">全部学科</button>';
-    tree.roots.forEach(function (l1) {
-      r1 += '<button class="fchip' + (cat[0] === l1 ? ' on' : '') + '" data-l1="' + App.util.esc(l1) + '">' + App.util.esc(l1) + '</button>';
+  /* 归属在本级（category 恰好等于该路径）的题目 */
+  function exactQuestions(path) {
+    var isUncat = path.length === 1 && path[0] === '未分类';
+    var key = path.join('|');
+    return filtered().filter(function (q) {
+      var c = q.category || [];
+      return isUncat ? c.length === 0 : c.join('|') === key;
     });
-    r1 += '<button class="fchip' + (cat.length === 1 && cat[0] === '未分类' ? ' on' : '') + '" data-uncat="1">未分类</button>';
-    rows += '<div class="chip-row cat">' + r1 + '</div>';
-
-    if (cat.length >= 1 && cat[0] !== '未分类') {
-      var r2 = '<button class="fchip' + (cat.length === 1 ? ' on' : '') + '" data-cut="1">全部' + App.util.esc(cat[0]) + '</button>';
-      (tree.subs[cat[0]] || []).forEach(function (l2) {
-        r2 += '<button class="fchip' + (cat[1] === l2 ? ' on' : '') + '" data-l2="' + App.util.esc(l2) + '">' + App.util.esc(l2) + '</button>';
-      });
-      rows += '<div class="chip-row cat">' + r2 + '</div>';
-    }
-
-    if (cat.length >= 2) {
-      var subs3 = tree.subs[cat.slice(0, 2).join('|')] || [];
-      if (subs3.length) {
-        var r3 = '<button class="fchip' + (cat.length === 2 ? ' on' : '') + '" data-cut="2">全部' + App.util.esc(cat[1]) + '</button>';
-        subs3.forEach(function (l3) {
-          r3 += '<button class="fchip' + (cat[2] === l3 ? ' on' : '') + '" data-l3="' + App.util.esc(l3) + '">' + App.util.esc(l3) + '</button>';
-        });
-        rows += '<div class="chip-row cat">' + r3 + '</div>';
-      }
-    }
-    return '<div id="cat-rows">' + rows + '</div>';
   }
 
-  /* ---------- 结果区（输入/筛选变化时只重绘这里） ---------- */
-  function listAreaHtml() {
-    var list = filtered();
-    var selCount = selectedIds().length;
-    var html =
-      '<div class="result-bar">' +
-      '  <span>筛选结果 ' + list.length + ' 题' + (selCount ? ' · 已选 ' + selCount + ' 题' : '') + '</span>' +
-      (list.length ? '<button class="btn ghost sm" id="btn-study-filter">背当前结果</button>' : '') +
-      '</div>';
+  function childFolders(path) {
+    var tree = App.store.categoryTree();
+    if (!path.length) {
+      var roots = tree.roots.slice();
+      if (subtreeCount(['未分类'])) roots.push('未分类');
+      return roots;
+    }
+    if (path.length >= 3 || path[0] === '未分类') return [];
+    return tree.subs[path.join('|')] || [];
+  }
 
-    if (!App.store.all().length) {
-      html += '<div class="empty"><div class="empty-title">题库还是空的</div>' +
+  function questionRow(q, lv) {
+    var checked = !!uiState.selected[q.id];
+    return (
+      '<li class="q-item tree-lv' + lv + (checked ? ' checked' : '') + '" data-id="' + App.util.esc(q.id) + '">' +
+      '  <button class="check" data-check="' + App.util.esc(q.id) + '" aria-label="选择">' + (checked ? '✓' : '') + '</button>' +
+      '  <div class="q-main" data-edit="' + App.util.esc(q.id) + '">' +
+      '    <div class="q-title">' + App.util.esc(q.question) + '</div>' +
+      '    <div class="q-meta">' + statusBadge(q) +
+      (q.category && q.category.length ? '<span class="chip catc">' + App.util.esc(q.category.join(' / ')) + '</span>' : '<span class="chip catc subtle">未分类</span>') +
+      '    </div>' +
+      '  </div>' +
+      '  <button class="star' + (q.favorite ? ' on' : '') + '" data-favq="' + App.util.esc(q.id) + '" aria-label="收藏">' + (q.favorite ? '★' : '☆') + '</button>' +
+      '</li>');
+  }
+
+  function nodeHtml(path, lv) {
+    var key = path.join('|');
+    var open = !!uiState.expanded[key];
+    var count = subtreeCount(path);
+    var html =
+      '<div class="tree-row' + (open ? ' open' : '') + '" data-lv="' + lv + '">' +
+      '  <button class="tree-toggle" data-toggle="' + App.util.esc(key) + '" aria-label="展开">' +
+      (childFolders(path).length || exactQuestions(path).length ? '▸' : '·') + '</button>' +
+      '  <div class="tree-name" data-toggle="' + App.util.esc(key) + '">' + App.util.esc(path[path.length - 1]) + '</div>' +
+      '  <span class="tree-count">' + count + '</span>' +
+      (count ? '<button class="btn ghost sm tree-go" data-gopath="' + App.util.esc(key) + '">背</button>' : '') +
+      '</div>';
+    if (open) {
+      childFolders(path).forEach(function (name) { html += nodeHtml(path.concat([name]), lv + 1); });
+      exactQuestions(path).forEach(function (q) { html += questionRow(q, lv + 1); });
+    }
+    return html;
+  }
+
+  function treeHtml() {
+    var html = '';
+    childFolders([]).forEach(function (name) { html += nodeHtml([name], 0); });
+    return html;
+  }
+
+  /* ---------- 结果区 ---------- */
+  function listAreaHtml() {
+    var searching = !!uiState.search.trim();
+    var all = filtered();
+    var selCount = selectedIds().length;
+    var html;
+
+    if (searching) {
+      html =
+        '<div class="result-bar">' +
+        '  <span>搜到 ' + all.length + ' 题' + (selCount ? ' · 已选 ' + selCount + ' 题' : '') + '</span>' +
+        (all.length ? '<button class="btn ghost sm" id="btn-study-filter">背当前结果</button>' : '') +
+        '</div>';
+      if (!all.length) {
+        html += '<div class="empty"><div class="empty-title">没有匹配的题目</div><div class="empty-desc">换个关键词试试</div></div>';
+      } else {
+        html += '<ul class="q-list">' + all.map(function (q) { return questionRow(q, 0); }).join('') + '</ul>';
+      }
+    } else if (!App.store.all().length) {
+      html = '<div class="empty"><div class="empty-title">题库还是空的</div>' +
         '<div class="empty-desc">点右上角“添加”录入第一道题，或“导入”一份 JSON 备份</div></div>';
-    } else if (!list.length) {
-      html += '<div class="empty"><div class="empty-title">没有匹配的题目</div><div class="empty-desc">换个关键词，或取消部分筛选</div></div>';
     } else {
-      html += '<ul class="q-list">' + list.map(function (q) {
-        var checked = !!uiState.selected[q.id];
-        return (
-          '<li class="q-item' + (checked ? ' checked' : '') + '" data-id="' + App.util.esc(q.id) + '">' +
-          '  <button class="check" data-check="' + App.util.esc(q.id) + '" aria-label="选择">' + (checked ? '✓' : '') + '</button>' +
-          '  <div class="q-main" data-edit="' + App.util.esc(q.id) + '">' +
-          '    <div class="q-title">' + App.util.esc(q.question) + '</div>' +
-          '    <div class="q-meta">' + statusBadge(q) +
-          (q.category && q.category.length ? '<span class="chip catc">' + App.util.esc(q.category.join(' / ')) + '</span>' : '') +
-          q.tags.map(function (t) { return '<span class="chip tag">' + App.util.esc(t) + '</span>'; }).join('') +
-          '    </div>' +
-          '  </div>' +
-          '  <button class="star' + (q.favorite ? ' on' : '') + '" data-favq="' + App.util.esc(q.id) + '" aria-label="收藏">' + (q.favorite ? '★' : '☆') + '</button>' +
-          '</li>');
-      }).join('') + '</ul>';
+      html =
+        '<div class="result-bar"><span>全部题目 ' + all.length + ' 题' + (selCount ? ' · 已选 ' + selCount + ' 题' : '') + '</span>' +
+        '<span class="tree-hint">点目录展开，右侧“背”直接开背该目录</span></div>' +
+        '<div class="tree-list">' + treeHtml() + '</div>';
     }
     html += '<div style="height:96px"></div>'; // 给底部条留白
     return html;
@@ -125,8 +153,6 @@
   /* ---------- 整页 ---------- */
   function render(root, params) {
     rootEl = root;
-    var tags = App.store.allTags();
-
     var html =
       '<div class="page">' +
       '<header class="page-head list-head">' +
@@ -141,16 +167,11 @@
 
       '<div class="search-box">' +
       '  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>' +
-      '  <input id="search" type="search" placeholder="搜索题目、答案、标签" value="' + App.util.esc(uiState.search) + '">' +
+      '  <input id="search" type="search" placeholder="搜索题目、答案、分类" value="' + App.util.esc(uiState.search) + '">' +
       '</div>' +
 
-      '<div id="cat-rows-wrap">' + catRowsHtml() + '</div>' +
-
-      '<div class="chip-row" id="tag-row">' +
-      '  <button class="fchip' + (uiState.favOnly ? ' on' : '') + '" data-fav="1">★ 收藏</button>' +
-      tags.map(function (t) {
-        return '<button class="fchip' + (uiState.tags.indexOf(t) !== -1 ? ' on' : '') + '" data-tag="' + App.util.esc(t) + '">' + App.util.esc(t) + '</button>';
-      }).join('') +
+      '<div class="chip-row">' +
+      '  <button class="fchip' + (uiState.favOnly ? ' on' : '') + '" data-fav="1">★ 只看收藏</button>' +
       '</div>' +
 
       '<div id="list-area">' + listAreaHtml() + '</div>' +
@@ -172,37 +193,12 @@
       refreshListArea();          // 只重绘结果区，输入框保持原元素
     };
 
-    rootEl.querySelector('#cat-rows-wrap').addEventListener('click', function (e) {
-      var l1 = e.target.closest('[data-l1]');
-      var l2 = e.target.closest('[data-l2]');
-      var l3 = e.target.closest('[data-l3]');
-      var cut = e.target.closest('[data-cut]');
-      var uncat = e.target.closest('[data-uncat]');
-      if (l1) uiState.cat = [l1.dataset.l1];
-      else if (l2) uiState.cat = [uiState.cat[0], l2.dataset.l2];
-      else if (l3) uiState.cat = [uiState.cat[0], uiState.cat[1], l3.dataset.l3];
-      else if (cut) uiState.cat = uiState.cat.slice(0, +cut.dataset.cut);
-      else if (uncat) uiState.cat = ['未分类'];
-      else return;
-      render(rootEl);   // 筛选行结构逐级变化，整页重绘
-    });
-
-    rootEl.querySelector('#tag-row').addEventListener('click', function (e) {
-      var fav = e.target.closest('[data-fav]');
-      var tag = e.target.closest('[data-tag]');
-      if (fav) uiState.favOnly = !uiState.favOnly;
-      if (tag) {
-        var t = tag.dataset.tag;
-        var i = uiState.tags.indexOf(t);
-        if (i === -1) uiState.tags.push(t); else uiState.tags.splice(i, 1);
-      }
-      if (fav || tag) render(rootEl);
+    rootEl.querySelector('.chip-row').addEventListener('click', function (e) {
+      if (e.target.closest('[data-fav]')) { uiState.favOnly = !uiState.favOnly; refreshListArea(); }
     });
 
     var studyFilter = rootEl.querySelector('#btn-study-filter');
-    if (studyFilter) studyFilter.onclick = function () {
-      startWith(filtered().map(function (q) { return q.id; }));
-    };
+    if (studyFilter) studyFilter.onclick = function () { startWith(filtered().map(function (q) { return q.id; })); };
 
     var selAll = rootEl.querySelector('#btn-sel-all');
     if (selAll) selAll.onclick = function () {
@@ -213,12 +209,20 @@
     var studySel = rootEl.querySelector('#btn-study-sel');
     if (studySel) studySel.onclick = function () { startWith(selectedIds()); };
 
-    // 结果区事件委托：容器常驻，内部节点随便重绘
+    // 结果区事件委托：目录展开、目录直背、勾选、收藏、编辑
     rootEl.querySelector('#list-area').addEventListener('click', function (e) {
+      var toggle = e.target.closest('[data-toggle]');
+      var gopath = e.target.closest('[data-gopath]');
       var check = e.target.closest('[data-check]');
       var favq = e.target.closest('[data-favq]');
       var edit = e.target.closest('[data-edit]');
-      if (check) {
+      if (toggle) {
+        var key = toggle.dataset.toggle;
+        if (uiState.expanded[key]) delete uiState.expanded[key]; else uiState.expanded[key] = true;
+        refreshListArea();
+      } else if (gopath) {
+        startWith(subtreeIds(gopath.dataset.gopath.split('|')));
+      } else if (check) {
         var id = check.dataset.check;
         if (uiState.selected[id]) delete uiState.selected[id]; else uiState.selected[id] = true;
         refreshListArea();
@@ -252,6 +256,7 @@
       if (!ok) return;
       App.store.clearAll();
       uiState.selected = {};
+      uiState.expanded = {};
       App.ui.toast('已清空');
       App.ui.render();
     }
