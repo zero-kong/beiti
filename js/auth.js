@@ -8,7 +8,7 @@
 })(typeof window !== 'undefined' ? window : globalThis, function () {
   'use strict';
 
-  var USERNAME = 'kongfang';
+  var USERNAME = 'hellokk';
   var PASSWORD_SHA256 = 'df6492ed4943ee83cd4b1af2c41b7169031049a61e0d2221da1fedf4a86aa147';
   var KEY = 'beiti.auth.v1';
   var KEY_FAILS = 'beiti.auth.fails';
