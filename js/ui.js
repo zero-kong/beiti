@@ -62,6 +62,29 @@
     });
   }
 
+  /* 底部菜单：items = [{act, label, danger?}]，返回 Promise<act|null> */
+  function menuSheet(items) {
+    return new Promise(function (resolve) {
+      var host = document.createElement('div');
+      host.className = 'overlay';
+      host.innerHTML =
+        '<div class="sheet">' +
+        items.map(function (it) {
+          return '<button class="btn ' + (it.danger ? 'ghost-danger' : 'ghost') + ' block" data-act="' + App.util.esc(it.act) + '">' + App.util.esc(it.label) + '</button>';
+        }).join('') +
+        '  <button class="btn ghost block" data-act="__cancel">取消</button>' +
+        '</div>';
+      host.addEventListener('click', function (e) {
+        if (e.target === host) { closeModal(host); resolve(null); return; }
+        var btn = e.target.closest('button[data-act]');
+        if (!btn) return;
+        closeModal(host);
+        resolve(btn.dataset.act === '__cancel' ? null : btn.dataset.act);
+      });
+      document.body.appendChild(host);
+    });
+  }
+
   /* ---------- 路由 ---------- */
   var routes = {};
 
@@ -178,6 +201,7 @@
 
   App.ui = {
     toast: toast, confirmDialog: confirmDialog, chooseOrder: chooseOrder,
+    menuSheet: menuSheet,
     register: register, render: render, go: go, renderHome: renderHome
   };
 })();

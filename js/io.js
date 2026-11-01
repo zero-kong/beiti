@@ -20,6 +20,47 @@
 
   function pickImport() { ensureInput().click(); }
 
+  /* ---------- 在线题库（同源 data/ 目录，部署后可用） ---------- */
+  function pickOnline() {
+    fetch('data/index.json').then(function (r) {
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      return r.json();
+    }).then(function (packs) {
+      if (!Array.isArray(packs) || !packs.length) throw new Error('empty');
+      var host = document.createElement('div');
+      host.className = 'overlay';
+      host.innerHTML =
+        '<div class="sheet">' +
+        '  <div class="sheet-title">从网站题库导入</div>' +
+        '  <div class="sheet-desc">题包保存在本站 data/ 目录，导入前仍会预览数量</div>' +
+        packs.map(function (p) {
+          return '<button class="btn ghost block" data-pack="' + App.util.esc(p.file) + '">' + App.util.esc(p.name) + '</button>';
+        }).join('') +
+        '  <button class="btn ghost block" data-act="cancel">取消</button>' +
+        '</div>';
+      host.addEventListener('click', function (e) {
+        if (e.target === host) { host.remove(); return; }
+        var btn = e.target.closest('button');
+        if (!btn) return;
+        host.remove();
+        if (btn.dataset.act === 'cancel') return;
+        fetch('data/' + btn.dataset.pack).then(function (r) {
+          if (!r.ok) throw new Error('HTTP ' + r.status);
+          return r.text();
+        }).then(function (text) {
+          var parsed;
+          try { parsed = App.store.parseImport(text); }
+          catch (err) { App.ui.toast(err.message || '题包解析失败'); return; }
+          if (!parsed.valid.length) { App.ui.toast('题包里没有可用题目'); return; }
+          preview(parsed);
+        }).catch(function () { App.ui.toast('题包获取失败'); });
+      });
+      document.body.appendChild(host);
+    }).catch(function () {
+      App.ui.toast('在线题库不可用（本地文件方式打开时请用“导入”选择 JSON 文件）');
+    });
+  }
+
   function exportFile() {
     if (!App.store.all().length) { App.ui.toast('题库为空，没有可导出的内容'); return; }
     var data = App.store.exportData();
@@ -84,5 +125,5 @@
     document.body.appendChild(host);
   }
 
-  App.io = { pickImport: pickImport, exportFile: exportFile };
+  App.io = { pickImport: pickImport, pickOnline: pickOnline, exportFile: exportFile };
 })();

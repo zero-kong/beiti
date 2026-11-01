@@ -180,16 +180,23 @@
   }
 
   async function moreMenu() {
-    var ok = await App.ui.confirmDialog({
-      title: '清空所有数据？',
-      desc: '将删除全部题目与背诵进度，建议先导出备份。此操作不可恢复。',
-      okText: '仍然清空', danger: true
-    });
-    if (!ok) return;
-    App.store.clearAll();
-    uiState.selected = {};
-    App.ui.toast('已清空');
-    App.ui.render();
+    var pick = await App.ui.menuSheet([
+      { act: 'online', label: '从网站题库导入' },
+      { act: 'clear', label: '清空所有数据', danger: true }
+    ]);
+    if (pick === 'online') { App.io.pickOnline(); return; }
+    if (pick === 'clear') {
+      var ok = await App.ui.confirmDialog({
+        title: '清空所有数据？',
+        desc: '将删除全部题目与背诵进度，建议先导出备份。此操作不可恢复。',
+        okText: '仍然清空', danger: true
+      });
+      if (!ok) return;
+      App.store.clearAll();
+      uiState.selected = {};
+      App.ui.toast('已清空');
+      App.ui.render();
+    }
   }
 
   App.ui.register('list', render);
