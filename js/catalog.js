@@ -6,7 +6,9 @@
     BUILT_IN: {
       'Java': ['java基础', 'java集合', 'java并发', 'IO', 'JVM调优', 'java8新特性', 'spring', '微服务'],
       'Python': ['Python基础', 'Python进阶', '框架与工程'],
-      'Agent': ['基础概念', '框架工具', '评估与优化']
+      'Agent': ['基础概念', '框架工具', '评估与优化'],
+      '数据库': ['redis', 'MongoDB', 'milvus', 'chrome'],
+      '中间件': ['redis', 'rocketmq']
     }
   };
 })();
