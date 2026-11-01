@@ -89,6 +89,12 @@
   var routes = {};
 
   function render() {
+    // 登录门禁：未登录时任何路由都只渲染登录页
+    if (App.auth && !App.auth.isAuthed()) {
+      document.querySelectorAll('.overlay').forEach(function (o) { o.remove(); });
+      App.auth.renderLogin(app);
+      return;
+    }
     var hash = location.hash || '#/';
     var name = hash.slice(2).split('?')[0] || 'home';
     var params = {};

@@ -2,10 +2,12 @@
 (function () {
   'use strict';
   var picked = [];   // 已选标签
+  var catPicked = [];  // 学科分类路径（最多 3 级）
 
   function render(root, params) {
     var q = params.id ? App.store.byId(params.id) : null;
     picked = q ? q.tags.slice() : [];
+    catPicked = q && q.category ? q.category.slice() : [];
     var isEdit = !!q;
 
     root.innerHTML =
@@ -22,6 +24,9 @@
       '    <label class="field"><span>参考答案 <i>*</i></span>' +
       '      <textarea id="f-answer" rows="8" placeholder="支持 Markdown：&#10;- 要点一&#10;- 要点二，可 **加粗**、`行内代码`&#10;```java&#10;// 整块代码展示&#10;```&#10;篇幅以面试中能口头复述为准">' + App.util.esc(q ? q.answer : '') + '</textarea>' +
       '    </label>' +
+      '    <div class="field"><span>学科分类（选填，最多三级）</span>' +
+      '      <div class="cat-edit" id="cat-edit"></div>' +
+      '    </div>' +
       '    <div class="field"><span>标签（选填，可多个）</span>' +
       '      <div class="tag-edit">' +
       '        <div class="picked-tags" id="picked"></div>' +
@@ -58,8 +63,63 @@
       : '';
   }
 
+  /* ---------- 学科分类选择器 ---------- */
+  function renderCat(root) {
+    var box = root.querySelector('#cat-edit');
+    if (!box) return;
+    var depth = catPicked.length;
+    var tree = App.store.categoryTree();
+
+    var html = '<div class="picked-cats">' +
+      (catPicked.length
+        ? catPicked.map(function (c, i) {
+            return '<span class="chip catc">' + App.util.esc(c) +
+              (i === catPicked.length - 1 ? '<button type="button" data-catrm="1">×</button>' : '') + '</span>';
+          }).join('') + '<span class="chip catc subtle">第 ' + catPicked.length + ' 级</span>'
+        : '<span class="chip catc subtle">未设置</span>') +
+      (catPicked.length ? '<button type="button" class="fchip sm" data-catreset="1">重置</button>' : '') +
+      '</div>';
+
+    if (depth < 3) {
+      var opts = depth === 0 ? tree.roots : (tree.subs[catPicked.join('|')] || []);
+      if (opts.length) {
+        html += '<div class="chip-row cat in-form">' +
+          opts.map(function (o) {
+            return '<button type="button" class="fchip' + (catPicked[depth] === o ? ' on' : '') + '" data-catpick="' + App.util.esc(o) + '">' + App.util.esc(o) + '</button>';
+          }).join('') + '</div>';
+      }
+      html += '<input id="f-cat" placeholder="自定义第 ' + (depth + 1) + ' 级，回车添加">';
+    }
+    box.innerHTML = html;
+  }
+
+  function bindCat(root) {
+    var box = root.querySelector('#cat-edit');
+    if (!box) return;
+    box.addEventListener('click', function (e) {
+      if (e.target.closest('[data-catrm]')) catPicked = catPicked.slice(0, -1);
+      if (e.target.closest('[data-catreset]')) catPicked = [];
+      var pick = e.target.closest('[data-catpick]');
+      if (pick && catPicked.length < 3) {
+        catPicked = catPicked.slice();
+        catPicked[catPicked.length] = pick.dataset.catpick;   // 追加为当前深度
+      }
+      renderCat(root);
+    });
+    box.addEventListener('keydown', function (e) {
+      if (e.key !== 'Enter') return;
+      var input = e.target.closest('#f-cat');
+      if (!input) return;
+      e.preventDefault();
+      var v = input.value.trim();
+      if (v && catPicked.length < 3) { catPicked.push(v); renderCat(root); }
+    });
+  }
+
   function bind(root, q) {
     renderTags(root);
+    renderCat(root);
+    bindCat(root);
 
     root.querySelector('#btn-back').onclick = function () {
       if (history.length > 1) history.back(); else App.ui.go('list');
@@ -98,6 +158,7 @@
       if (!answer) { App.ui.toast('参考答案不能为空'); return; }
       var data = {
         question: question, answer: answer, tags: picked.slice(),
+        category: catPicked.slice(),
         source: root.querySelector('#f-source').value.trim(),
         note: root.querySelector('#f-note').value.trim()
       };

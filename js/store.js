@@ -29,6 +29,13 @@
   /* ---------- 题目 ---------- */
   function all() { return get().questions; }
 
+  /* 学科分类：一级/二级/三级路径，最长 3 级 */
+  function sanitizeCategory(c) {
+    if (!Array.isArray(c)) return [];
+    return c.map(function (s) { return String(s == null ? '' : s).trim(); })
+      .filter(Boolean).slice(0, 3);
+  }
+
   function byId(id) {
     return all().find(function (q) { return q.id === id; }) || null;
   }
@@ -38,6 +45,7 @@
       id: data.id || App.util.uid(),
       question: data.question,
       answer: data.answer,
+      category: sanitizeCategory(data.category),
       tags: Array.isArray(data.tags) ? data.tags.filter(Boolean).map(String) : [],
       source: data.source || '',
       note: data.note || '',
@@ -60,6 +68,7 @@
     if (patch.question !== undefined) q.question = patch.question;
     if (patch.answer !== undefined) q.answer = patch.answer;
     if (patch.tags !== undefined) q.tags = patch.tags;
+    if (patch.category !== undefined) q.category = sanitizeCategory(patch.category);
     if (patch.source !== undefined) q.source = patch.source;
     if (patch.note !== undefined) q.note = patch.note;
     persist();
@@ -108,15 +117,44 @@
     var kw = (opts.search || '').trim().toLowerCase();
     var tags = opts.tags || [];
     var favOnly = !!opts.favOnly;
+    var cat = sanitizeCategory(opts.category);
     return all().filter(function (q) {
       if (favOnly && !q.favorite) return false;
       if (tags.length && !q.tags.some(function (t) { return tags.indexOf(t) !== -1; })) return false;
+      if (cat.length) {
+        if (cat.length === 1 && cat[0] === '未分类') {
+          if ((q.category || []).length) return false;       // 只看未分类
+        } else {
+          var qc = q.category || [];
+          if (qc.length < cat.length) return false;           // 按路径前缀匹配
+          for (var i = 0; i < cat.length; i++) if (qc[i] !== cat[i]) return false;
+        }
+      }
       if (kw) {
-        var hay = (q.question + '\n' + q.answer + '\n' + q.tags.join(' ')).toLowerCase();
+        var hay = (q.question + '\n' + q.answer + '\n' + q.tags.join(' ') + '\n' + (q.category || []).join(' ')).toLowerCase();
         if (hay.indexOf(kw) === -1) return false;
       }
       return true;
     });
+  }
+
+  /* 学科目录树：内置目录优先，再并入题目数据里出现过的分类（含第三级）。
+     返回 { roots: [一级...], subs: { 'Java': [二级...], 'Java|java集合': [三级...] } } */
+  function categoryTree() {
+    var roots = [], subs = {};
+    Object.keys(App.catalog.BUILT_IN).forEach(function (l1) {
+      roots.push(l1);
+      subs[l1] = (App.catalog.BUILT_IN[l1] || []).slice();
+    });
+    all().forEach(function (q) {
+      (q.category || []).forEach(function (name, i) {
+        var key = q.category.slice(0, i).join('|');
+        if (i === 0) { if (roots.indexOf(name) === -1) roots.push(name); return; }
+        subs[key] = subs[key] || [];
+        if (subs[key].indexOf(name) === -1) subs[key].push(name);
+      });
+    });
+    return { roots: roots, subs: subs };
   }
 
   function dueList(now) {
@@ -163,6 +201,7 @@
         id: typeof item.id === 'string' && item.id ? item.id : App.util.uid(),
         question: question,
         answer: answer,
+        category: sanitizeCategory(item.category),
         tags: Array.isArray(item.tags) ? item.tags.filter(function (t) { return t != null && t !== ''; }).map(String) : [],
         source: item.source != null ? String(item.source) : '',
         note: item.note != null ? String(item.note) : '',
@@ -214,6 +253,7 @@
     addQuestion: addQuestion, updateContent: updateContent,
     toggleFavorite: toggleFavorite, removeQuestion: removeQuestion,
     allTags: allTags, filterQuestions: filterQuestions,
+    categoryTree: categoryTree, sanitizeCategory: sanitizeCategory,
     dueList: dueList, counts: counts,
     exportData: exportData, parseImport: parseImport,
     analyzeImport: analyzeImport, applyImport: applyImport,
@@ -223,24 +263,25 @@
   /* ---------- 首批示例题目（可在题库里编辑或删除） ---------- */
   function seedQuestions() {
     var now = Date.now();
-    function seed(question, answer, tags) {
+    function seed(question, answer, tags, category) {
       return {
         id: App.util.uid(), question: question, answer: answer,
-        tags: tags, source: '', note: '', favorite: false,
+        category: sanitizeCategory(category || []), tags: tags,
+        source: '', note: '', favorite: false,
         stage: -1, dueAt: null, lastFeedback: null, lastStudiedAt: null, createdAt: now
       };
     }
     return [
       seed('HashMap 的 put 流程与扩容机制是什么？',
-        '- 对 key 的 hash 做高 16 位异或扰动，定位到桶\n- 桶为空直接放入；否则遍历链表或红黑树，equals 相同则覆盖，不同则尾插\n- 链表长度达到 8 且数组长度达到 64 时树化，避免退化为 O(n) 查找\n- 元素超过容量 × 0.75（负载因子）时扩容为原来的 2 倍并重新分布\n- JDK 8 重新分布时元素要么留原下标，要么移动到原下标 + 旧容量', ['Java', '示例']),
+        '- 对 key 的 hash 做高 16 位异或扰动，定位到桶\n- 桶为空直接放入；否则遍历链表或红黑树，equals 相同则覆盖，不同则尾插\n- 链表长度达到 8 且数组长度达到 64 时树化，避免退化为 O(n) 查找\n- 元素超过容量 × 0.75（负载因子）时扩容为原来的 2 倍并重新分布\n- JDK 8 重新分布时元素要么留原下标，要么移动到原下标 + 旧容量', ['Java', '示例'], ['Java', 'java集合', 'HashMap']),
       seed('JVM 如何判断一个对象可以被回收？',
-        '- 主流做法是可达性分析：从 GC Roots 出发不可达的对象判定可回收\n- GC Roots 包括栈上局部变量、静态变量、常量引用、JNI 引用等\n- 软、弱、虚引用提供不同强度的回收时机\n- 不可达对象至少经过两次标记才会真正回收，finalize 只会执行一次\n- 收集器按分代假设工作：新生代复制算法，老年代标记清除或标记整理', ['Java', '示例']),
+        '- 主流做法是可达性分析：从 GC Roots 出发不可达的对象判定可回收\n- GC Roots 包括栈上局部变量、静态变量、常量引用、JNI 引用等\n- 软、弱、虚引用提供不同强度的回收时机\n- 不可达对象至少经过两次标记才会真正回收，finalize 只会执行一次\n- 收集器按分代假设工作：新生代复制算法，老年代标记清除或标记整理', ['Java', '示例'], ['Java', 'JVM调优', '垃圾回收']),
       seed('synchronized 的锁升级过程是怎样的？',
-        '- 对象头 Mark Word 记录锁状态：无锁 → 偏向锁 → 轻量级锁 → 重量级锁\n- 同一线程重复获取时进入偏向锁，只有发生竞争撤销时才有开销\n- 出现第二个线程竞争就升级为轻量级锁，在线程栈上通过 CAS 自旋获取\n- 自旋失败或竞争加剧则膨胀为重量级锁，依赖操作系统互斥量\n- 锁只能升级不能降级，JDK 15 起偏向锁默认废弃', ['Java', '示例']),
+        '- 对象头 Mark Word 记录锁状态：无锁 → 偏向锁 → 轻量级锁 → 重量级锁\n- 同一线程重复获取时进入偏向锁，只有发生竞争撤销时才有开销\n- 出现第二个线程竞争就升级为轻量级锁，在线程栈上通过 CAS 自旋获取\n- 自旋失败或竞争加剧则膨胀为重量级锁，依赖操作系统互斥量\n- 锁只能升级不能降级，JDK 15 起偏向锁默认废弃', ['Java', '示例'], ['Java', 'java并发', '锁']),
       seed('线上接口突然变慢，你会怎么排查？',
-        '- 前提：先看监控确定范围，是个别接口、整个应用，还是某个依赖\n- 应用层：线程池是否打满、GC 停顿、大对象、锁竞争、慢日志\n- 依赖层：下游 RPC 超时、缓存命中率下降、数据库慢 SQL 与锁等待\n- 流量层：是否有突增、重试风暴、慢查询拖垮连接池\n- 方案：先限流降级扩容止血，恢复后再做根因修复与压测回归', ['高并发', '示例']),
+        '- 前提：先看监控确定范围，是个别接口、整个应用，还是某个依赖\n- 应用层：线程池是否打满、GC 停顿、大对象、锁竞争、慢日志\n- 依赖层：下游 RPC 超时、缓存命中率下降、数据库慢 SQL 与锁等待\n- 流量层：是否有突增、重试风暴、慢查询拖垮连接池\n- 方案：先限流降级扩容止血，恢复后再做根因修复与压测回归', ['高并发', '示例'], ['Java', '微服务', '线上排查']),
       seed('如何设计一个秒杀系统？',
-        '- 前提：读多写少、库存少、瞬时流量极高，核心是不让多余流量打到数据库\n- 方案：前端按钮防抖、CDN 静态化、网关限流、答题验证码削峰\n- 库存预热到 Redis，用 Lua 或原子操作扣减防止超卖\n- 异步下单：请求进 MQ 排队，数据库只处理最终成功的事务\n- 取舍：牺牲部分实时性换稳定性；兜底用对账与超时回补保证最终一致', ['高并发', '示例']),
+        '- 前提：读多写少、库存少、瞬时流量极高，核心是不让多余流量打到数据库\n- 方案：前端按钮防抖、CDN 静态化、网关限流、答题验证码削峰\n- 库存预热到 Redis，用 Lua 或原子操作扣减防止超卖\n- 异步下单：请求进 MQ 排队，数据库只处理最终成功的事务\n- 取舍：牺牲部分实时性换稳定性；兜底用对账与超时回补保证最终一致', ['高并发', '示例'], ['Java', '微服务', '高并发设计']),
       seed('useState 的闭包陷阱是什么，怎么解决？',
         '- state 是那次渲染的快照，setState 后并不会立刻改变当前作用域里的变量\n- 在定时器、异步回调里读 state，拿到的是创建回调那次渲染的旧值\n- 解决一：函数式更新 setX(prev => ...)，不依赖外部旧值\n- 解决二：把最新值放进 useRef，回调中读 ref.current\n- 连续计算优先用函数式更新，需要副作用里拿最新值就用 ref', ['React', '示例']),
       seed('列表渲染为什么要用 key？',

@@ -24,7 +24,9 @@
     var body =
       '<div class="study-main">' +
       '  <div class="card question-card">' +
-      '    <div class="tag-line">' + q.tags.map(function (t) { return '<span class="chip tag">' + App.util.esc(t) + '</span>'; }).join('') + '</div>' +
+      '    <div class="tag-line">' +
+      (q.category && q.category.length ? '<span class="chip catc">' + App.util.esc(q.category.join(' / ')) + '</span>' : '') +
+      q.tags.map(function (t) { return '<span class="chip tag">' + App.util.esc(t) + '</span>'; }).join('') + '</div>' +
       '    <div class="q-text">' + App.util.esc(q.question) + '</div>' +
       '  </div>' +
       '  <div class="card answer-card' + (revealed ? '' : ' hidden-card') + '">' +

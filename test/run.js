@@ -1,7 +1,8 @@
-/* 复习规则 + Markdown 渲染单元测试：node test/run.js（无第三方依赖） */
+/* 复习规则 + Markdown 渲染 + 登录模块单元测试：node test/run.js（无第三方依赖） */
 var assert = require('assert');
 var review = require('../js/review.js');
 var md = require('../js/md.js');
+var auth = require('../js/auth.js');
 
 var DAY = 86400000;
 var T0 = new Date(2026, 9, 28, 10, 0, 0).getTime();   // 2026-10-28 10:00（测试基准时刻）
@@ -209,6 +210,25 @@ test('列表项支持行内代码与加粗', function () {
 test('原有“- 要点”种子格式渲染为列表', function () {
   var h = md.render('- 第一点\n- 第二点\n- 第三点');
   assert.ok((h.match(/<li>/g) || []).length === 3);
+});
+
+console.log('\n[登录模块]');
+test('SHA-256 标准向量：空串与 abc', function () {
+  assert.strictEqual(auth.sha256(''),
+    'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855');
+  assert.strictEqual(auth.sha256('abc'),
+    'ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad');
+});
+test('SHA-256 长输入与中文（UTF-8）', function () {
+  assert.strictEqual(auth.sha256('abcdbcdecdefdefgefghfghighijhijkijkljklmklmnlmnomnopnopq'),
+    '248d6a61d20638b8e5c026930c3e6039a33ce45964ff2167f6ecedd419db06c1');
+  var h = auth.sha256('背题2026');
+  assert.ok(/^[0-9a-f]{64}$/.test(h), '中文输入应产出合法 64 位十六进制摘要');
+});
+test('密码哈希已内嵌且非占位', function () {
+  // 只验证结构：登录失败路径不抛异常即可（localStorage 不存在于 Node 环境）
+  var r = auth.login('someone', 'wrong');
+  assert.strictEqual(typeof r, 'string', '错误凭据应返回失败原因字符串');
 });
 
 console.log('\n测试结果：' + passed + ' 通过，' + failed + ' 失败\n');

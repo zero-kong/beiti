@@ -2,7 +2,7 @@
    结构上搜索框与筛选条常驻，只重绘结果区，避免输入过程中输入框被重建。 */
 (function () {
   'use strict';
-  var uiState = { search: '', tags: [], favOnly: false, selected: {} };
+  var uiState = { search: '', tags: [], favOnly: false, cat: [], selected: {} };
   var rootEl = null;
 
   function statusBadge(q) {
@@ -14,7 +14,7 @@
 
   function filtered() {
     return App.store.filterQuestions({
-      search: uiState.search, tags: uiState.tags, favOnly: uiState.favOnly
+      search: uiState.search, tags: uiState.tags, favOnly: uiState.favOnly, category: uiState.cat
     });
   }
 
@@ -27,6 +27,40 @@
     if (!order) return;
     if (!App.session.start({ ids: ids, mode: 'free', order: order })) { App.ui.toast('没有可背的题目'); return; }
     App.ui.go('study');
+  }
+
+  /* ---------- 学科分类筛选行（逐级显示：选了一级才出二级，依此类推） ---------- */
+  function catRowsHtml() {
+    var tree = App.store.categoryTree();
+    var cat = uiState.cat;
+    var rows = '';
+
+    var r1 = '<button class="fchip' + (cat.length ? '' : ' on') + '" data-cut="0">全部学科</button>';
+    tree.roots.forEach(function (l1) {
+      r1 += '<button class="fchip' + (cat[0] === l1 ? ' on' : '') + '" data-l1="' + App.util.esc(l1) + '">' + App.util.esc(l1) + '</button>';
+    });
+    r1 += '<button class="fchip' + (cat.length === 1 && cat[0] === '未分类' ? ' on' : '') + '" data-uncat="1">未分类</button>';
+    rows += '<div class="chip-row cat">' + r1 + '</div>';
+
+    if (cat.length >= 1 && cat[0] !== '未分类') {
+      var r2 = '<button class="fchip' + (cat.length === 1 ? ' on' : '') + '" data-cut="1">全部' + App.util.esc(cat[0]) + '</button>';
+      (tree.subs[cat[0]] || []).forEach(function (l2) {
+        r2 += '<button class="fchip' + (cat[1] === l2 ? ' on' : '') + '" data-l2="' + App.util.esc(l2) + '">' + App.util.esc(l2) + '</button>';
+      });
+      rows += '<div class="chip-row cat">' + r2 + '</div>';
+    }
+
+    if (cat.length >= 2) {
+      var subs3 = tree.subs[cat.slice(0, 2).join('|')] || [];
+      if (subs3.length) {
+        var r3 = '<button class="fchip' + (cat.length === 2 ? ' on' : '') + '" data-cut="2">全部' + App.util.esc(cat[1]) + '</button>';
+        subs3.forEach(function (l3) {
+          r3 += '<button class="fchip' + (cat[2] === l3 ? ' on' : '') + '" data-l3="' + App.util.esc(l3) + '">' + App.util.esc(l3) + '</button>';
+        });
+        rows += '<div class="chip-row cat">' + r3 + '</div>';
+      }
+    }
+    return '<div id="cat-rows">' + rows + '</div>';
   }
 
   /* ---------- 结果区（输入/筛选变化时只重绘这里） ---------- */
@@ -53,6 +87,7 @@
           '  <div class="q-main" data-edit="' + App.util.esc(q.id) + '">' +
           '    <div class="q-title">' + App.util.esc(q.question) + '</div>' +
           '    <div class="q-meta">' + statusBadge(q) +
+          (q.category && q.category.length ? '<span class="chip catc">' + App.util.esc(q.category.join(' / ')) + '</span>' : '') +
           q.tags.map(function (t) { return '<span class="chip tag">' + App.util.esc(t) + '</span>'; }).join('') +
           '    </div>' +
           '  </div>' +
@@ -109,6 +144,8 @@
       '  <input id="search" type="search" placeholder="搜索题目、答案、标签" value="' + App.util.esc(uiState.search) + '">' +
       '</div>' +
 
+      '<div id="cat-rows-wrap">' + catRowsHtml() + '</div>' +
+
       '<div class="chip-row" id="tag-row">' +
       '  <button class="fchip' + (uiState.favOnly ? ' on' : '') + '" data-fav="1">★ 收藏</button>' +
       tags.map(function (t) {
@@ -134,6 +171,21 @@
       uiState.search = search.value;
       refreshListArea();          // 只重绘结果区，输入框保持原元素
     };
+
+    rootEl.querySelector('#cat-rows-wrap').addEventListener('click', function (e) {
+      var l1 = e.target.closest('[data-l1]');
+      var l2 = e.target.closest('[data-l2]');
+      var l3 = e.target.closest('[data-l3]');
+      var cut = e.target.closest('[data-cut]');
+      var uncat = e.target.closest('[data-uncat]');
+      if (l1) uiState.cat = [l1.dataset.l1];
+      else if (l2) uiState.cat = [uiState.cat[0], l2.dataset.l2];
+      else if (l3) uiState.cat = [uiState.cat[0], uiState.cat[1], l3.dataset.l3];
+      else if (cut) uiState.cat = uiState.cat.slice(0, +cut.dataset.cut);
+      else if (uncat) uiState.cat = ['未分类'];
+      else return;
+      render(rootEl);   // 筛选行结构逐级变化，整页重绘
+    });
 
     rootEl.querySelector('#tag-row').addEventListener('click', function (e) {
       var fav = e.target.closest('[data-fav]');
@@ -182,9 +234,15 @@
   async function moreMenu() {
     var pick = await App.ui.menuSheet([
       { act: 'online', label: '从网站题库导入' },
-      { act: 'clear', label: '清空所有数据', danger: true }
+      { act: 'clear', label: '清空所有数据', danger: true },
+      { act: 'logout', label: '退出登录' }
     ]);
     if (pick === 'online') { App.io.pickOnline(); return; }
+    if (pick === 'logout') {
+      var out = await App.ui.confirmDialog({ title: '退出登录？', desc: '题库与背诵进度保留在本机，重新登录后继续。', okText: '退出' });
+      if (out) { App.auth.logout(); App.ui.render(); }
+      return;
+    }
     if (pick === 'clear') {
       var ok = await App.ui.confirmDialog({
         title: '清空所有数据？',

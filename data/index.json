@@ -1,5 +1,18 @@
 [
-  { "file": "java-collections.json", "name": "Java 集合面试题（9 题，整理自 pdai）" },
-  { "file": "agent-decorators.json", "name": "Agent 开发高频装饰器" },
-  { "file": "python-builtin-decorators.json", "name": "Python 内置装饰器" }
+  {
+    "file": "java-bank.json",
+    "name": "Java 面试题·八大专题（16 题）"
+  },
+  {
+    "file": "java-collections.json",
+    "name": "Java 集合面试题（9 题，整理自 pdai）"
+  },
+  {
+    "file": "agent-decorators.json",
+    "name": "Agent 开发高频装饰器"
+  },
+  {
+    "file": "python-builtin-decorators.json",
+    "name": "Python 内置装饰器"
+  }
 ]

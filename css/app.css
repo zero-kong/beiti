@@ -467,3 +467,47 @@ pre.codeblk code::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, .18)
   .big-card:hover, .q-item:hover { border-color: var(--accent); }
   .btn.primary:hover { filter: brightness(1.05); }
 }
+
+/* ---------- 登录页 ---------- */
+.login-page {
+  min-height: 100dvh;
+  display: flex; align-items: center; justify-content: center;
+  padding: 24px;
+}
+.login-box { width: 100%; max-width: 360px; }
+.login-logo { font-size: 36px; font-weight: 800; text-align: center; letter-spacing: 3px; }
+.login-sub { color: var(--muted); text-align: center; font-size: 13px; margin: 6px 0 26px; }
+.login-card { padding: 22px 18px; }
+.login-err { color: var(--red); font-size: 13px; min-height: 20px; text-align: center; margin: 2px 0 10px; }
+.login-tip { color: var(--muted); font-size: 12px; text-align: center; margin-top: 18px; }
+.shake { animation: shake .35s; }
+@keyframes shake {
+  10%, 90% { transform: translateX(-1px); }
+  20%, 80% { transform: translateX(2px); }
+  30%, 50%, 70% { transform: translateX(-4px); }
+  40%, 60% { transform: translateX(4px); }
+}
+.pwd-box { position: relative; }
+.pwd-box input { padding-right: 62px; }
+.pwd-box button {
+  position: absolute; right: 6px; top: 50%; transform: translateY(-50%);
+  border: none; background: transparent; color: var(--muted);
+  font-size: 12px; cursor: pointer; padding: 8px; border-radius: 8px;
+}
+
+/* ---------- 学科分类 ---------- */
+.chip-row.cat { padding-top: 2px; padding-bottom: 8px; }
+.chip-row.cat.in-form { padding: 6px 0 4px; }
+.chip.catc { background: var(--green-weak); color: var(--green); }
+.chip.catc.subtle { background: transparent; color: var(--muted); border: 1px dashed var(--line); }
+.picked-cats { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.picked-cats .chip.catc { font-size: 12.5px; padding: 3px 8px; display: inline-flex; align-items: center; gap: 3px; }
+.picked-cats .chip.catc button {
+  border: none; background: transparent; color: inherit; cursor: pointer;
+  font-size: 13px; padding: 0 0 0 2px; line-height: 1;
+}
+.cat-edit { border: 1px solid var(--line); border-radius: 12px; background: var(--card); padding: 10px 12px; }
+.cat-edit #f-cat, .cat-edit input {
+  border: none; outline: none; background: transparent; color: var(--ink);
+  width: 100%; font-size: 14px; font-family: inherit; margin-top: 6px;
+}
