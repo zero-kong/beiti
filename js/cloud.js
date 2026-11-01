@@ -106,7 +106,12 @@
   }
 
   function autoBoot() {
-    if (configured()) setTimeout(function () { sync(true); }, 1200);
+    if (!configured()) return;
+    setTimeout(function () { sync(true); }, 1200);
+    // 后台标签/切后台会冻结防抖定时器：回到前台立即补一次同步
+    document.addEventListener('visibilitychange', function () {
+      if (document.visibilityState === 'visible') sync(true);
+    });
   }
 
   /* ---------- 设置弹层 ---------- */
