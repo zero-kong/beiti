@@ -5,3 +5,8 @@
 
 # 本地账号明文记录（勿提交）
 本地账号.txt
+
+# 数据库凭据与同步令牌（勿提交）
+api/config.local.json
+api/node_modules/
+本地数据库.txt

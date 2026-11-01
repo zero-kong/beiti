@@ -33,6 +33,7 @@
   <script src="js/study.js"></script>
   <script src="js/edit.js"></script>
   <script src="js/io.js"></script>
+  <script src="js/cloud.js"></script>
   <script>
     (function () {
       App.ui.register('home', App.ui.renderHome);
@@ -42,6 +43,7 @@
       });
       window.addEventListener('hashchange', App.ui.render);
       App.ui.render();
+      App.cloud.autoBoot();   // 已配置云端时启动自动同步
     })();
   </script>
 </body>

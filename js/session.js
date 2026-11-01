@@ -54,7 +54,7 @@
     if (!ses) return { done: true, requeued: false };
     var id = ses.ids[ses.index];
     var q = App.store.byId(id);
-    if (q) Object.assign(q, App.review.computeNext(q, feedback));
+    if (q) { Object.assign(q, App.review.computeNext(q, feedback)); q.updatedAt = Date.now(); }
     ses.counts[feedback] = (ses.counts[feedback] || 0) + 1;
     ses.index++;
     var requeued = false;

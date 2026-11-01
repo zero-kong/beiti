@@ -237,10 +237,12 @@
 
   async function moreMenu() {
     var pick = await App.ui.menuSheet([
+      { act: 'cloud', label: '云端同步（MySQL）' },
       { act: 'online', label: '从网站题库导入' },
       { act: 'clear', label: '清空所有数据', danger: true },
       { act: 'logout', label: '退出登录' }
     ]);
+    if (pick === 'cloud') { App.cloud.sheet(); return; }
     if (pick === 'online') { App.io.pickOnline(); return; }
     if (pick === 'logout') {
       var out = await App.ui.confirmDialog({ title: '退出登录？', desc: '题库与背诵进度保留在本机，重新登录后继续。', okText: '退出' });

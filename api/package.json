@@ -1,0 +1,13 @@
+{
+  "name": "beiti-api",
+  "version": "1.0.0",
+  "private": true,
+  "description": "背题 · 云同步 API（MySQL 存储）+ 静态托管",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "mysql2": "^3.11.0"
+  }
+}

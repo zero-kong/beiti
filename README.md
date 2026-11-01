@@ -82,3 +82,21 @@ node test/run.js     # 16 项复习规则测试
 - 背诵页语音转写与按需 AI 评分（页面已预留扩展点，不影响纯翻卡背诵）
 - 账号体系与多端自动同步（当前用 JSON 导入导出迁移）
 - 抖音/B 站/GitHub 自动抓取、模拟面试、知识图谱等
+
+## 云端同步（MySQL）
+
+题库数据可通过自建 API 同步到 MySQL，实现多设备共用一份进度。
+
+- **架构**：静态页面 ←（API 地址 + 同步令牌）→ Node API（[api/server.js](api/server.js)）→ MySQL。**数据库密码只存在服务端** `api/config.local.json`（已 gitignore），前端与仓库里都没有。
+- **同步语义**：启动自动拉取；增删改、背题自评后约 4 秒自动推送；按 `updated_at` 新者胜合并，删除通过墓碑传播到其他设备。也可在题库页 ⋯ → 云端同步里手动「立即同步」。
+- **部署 API**（放在能连 MySQL 的服务器上）：
+  ```bash
+  # 服务器上（假设已装 Node ≥16）
+  git clone https://github.com/zero-kong/beiti.git && cd beiti/api
+  npm install
+  cp config.example.json config.local.json   # 填入数据库地址/账号/密码，token 换成自己的随机长串
+  node server.js                              # 默认 8790 端口，同时托管整个静态站点
+  ```
+  建议用 pm2 常驻：`pm2 start server.js --name beiti-api`。
+- **各设备使用**：题库页 ⋯ → 云端同步，填 API 地址（如 `http://<服务器>:8790`）与令牌 → 立即同步。
+- **注意**：GitHub Pages 是 https，浏览器会拦截对普通 http 公网地址的请求（混合内容）；因此手机建议直接访问 API 服务器托管的本站（`http://<服务器>:8790/`），电脑上 Pages 版可填 `http://localhost:8790` 联调。API 走令牌鉴权但传输是明文 http，介意的话给服务器配域名和 https。

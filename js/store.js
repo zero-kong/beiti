@@ -6,6 +6,8 @@
 
   function persist() {
     localStorage.setItem(KEY, JSON.stringify(state));
+    // 云同步钩子：任何数据变化 → 防抖推送（合并拉取期间由 cloud.suppressed 抑制）
+    if (App.cloud && !App.cloud.suppressed) App.cloud.notifyChange();
   }
 
   function get() {
@@ -19,9 +21,14 @@
         }
       } catch (e) { /* 损坏数据当作首次使用 */ }
       if (!state) {
-        state = { version: 1, questions: seedQuestions(), session: null };
+        state = { version: 1, questions: seedQuestions(), session: null, deletedIds: [] };
         persist();
       }
+      /* 旧数据补字段：同步用的更新时间与删除墓碑 */
+      state.deletedIds = Array.isArray(state.deletedIds) ? state.deletedIds : [];
+      state.questions.forEach(function (q) {
+        if (typeof q.updatedAt !== 'number') q.updatedAt = 0;
+      });
     }
     return state;
   }
@@ -54,7 +61,8 @@
       dueAt: typeof data.dueAt === 'number' ? data.dueAt : null,
       lastFeedback: data.lastFeedback || null,
       lastStudiedAt: typeof data.lastStudiedAt === 'number' ? data.lastStudiedAt : null,
-      createdAt: data.createdAt || Date.now()
+      createdAt: data.createdAt || Date.now(),
+      updatedAt: Date.now()
     };
     get().questions.push(q);
     persist();
@@ -71,6 +79,7 @@
     if (patch.category !== undefined) q.category = sanitizeCategory(patch.category);
     if (patch.source !== undefined) q.source = patch.source;
     if (patch.note !== undefined) q.note = patch.note;
+    q.updatedAt = Date.now();
     persist();
     return q;
   }
@@ -79,6 +88,7 @@
     var q = byId(id);
     if (!q) return null;
     q.favorite = !q.favorite;
+    q.updatedAt = Date.now();
     persist();
     return q;
   }
@@ -86,6 +96,7 @@
   function removeQuestion(id) {
     var s = get();
     var before = s.questions.length;
+    if (s.deletedIds.indexOf(id) === -1) s.deletedIds.push(id);   // 删除墓碑：同步时让其他设备也删
     s.questions = s.questions.filter(function (q) { return q.id !== id; });
     /* 本轮队列里同步移除，避免背诵时撞到已删除的题 */
     if (s.session) {
@@ -228,6 +239,7 @@
     var added = 0, replaced = 0, skipped = 0;
     items.forEach(function (it) {
       var existing = byId(it.id);
+      it.updatedAt = Date.now();
       if (!existing) { s.questions.push(it); added++; }
       else if (mode === 'replace') {
         var i = s.questions.indexOf(existing);
@@ -241,6 +253,9 @@
 
   function clearAll() {
     var s = get();
+    s.questions.forEach(function (q) {
+      if (s.deletedIds.indexOf(q.id) === -1) s.deletedIds.push(q.id);
+    });
     s.questions = [];
     s.session = null;
     persist();

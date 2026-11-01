@@ -558,3 +558,7 @@ pre.codeblk code::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, .18)
 .folder-line:active { transform: scale(.985); }
 .fl-name { font-weight: 600; font-size: 14.5px; }
 .fl-count { color: var(--muted); font-size: 12.5px; }
+
+/* ---------- 云端同步弹层 ---------- */
+.sheet .field { margin-bottom: 10px; text-align: left; }
+.cloud-stat { color: var(--muted); font-size: 12.5px; text-align: center; margin: 4px 0 12px; }
